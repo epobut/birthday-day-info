@@ -3,9 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="Birthday Day Info API")
 
-origins = [
-    "*",  # на старте можно так, потом сузим под домен фронта
-]
+origins = ["*"]
 
 app.add_middleware(
     CORSMiddleware,
@@ -23,24 +21,24 @@ def health():
 
 @app.get("/day-info")
 def day_info(date: str, city: str = "Kyiv"):
-    # TODO: заменить мок на реальные данные из API/БД
+    # TODO: замінити мок на реальні дані з API/БД
     return {
         "date": date,
         "location": city,
         "weather": {
             "t_min": -3.4,
             "t_max": 29.1,
-            "anomaly_comment": "День был теплее нормы примерно на 3 °C.",
+            "anomaly_comment": "Цей день був приблизно на 3 °C тепліший за кліматичну норму.",
         },
         "astro": {
-            "moon_phase": "полнолуние",
+            "moon_phase": "повня",
             "events": [
-                "Частичное лунное затмение было видно над Восточной Европой."
+                "Часткове місячне затемнення було видно над Східною Європою."
             ],
         },
         "world_events": [
-            "В этот день родился какой-то известный человек.",
-            "Произошло интересное событие в мире науки.",
+            "У цей день народилася відома людина.",
+            "Сталося цікаве відкриття у світі науки.",
         ],
         "fun_score": 7.8,
     }
