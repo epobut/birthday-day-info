@@ -2,7 +2,7 @@ import { useState } from 'react';
 import './App.css';
 
 const API_BASE =
-  import.meta.env.VITE_API_BASE || 'https://<render-backend-url>';
+  import.meta.env.VITE_API_BASE || 'https://birthday-day-info-1.onrender.com';
 
 function App() {
   const [date, setDate] = useState('');
