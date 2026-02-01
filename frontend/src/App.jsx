@@ -27,7 +27,7 @@ function App() {
       const json = await res.json();
       setData(json);
     } catch (err) {
-      setError('Не удалось загрузить данные, попробуй ещё раз.');
+      setError('Не вдалося завантажити дані, спробуй ще раз.');
       console.error(err);
     } finally {
       setLoading(false);
@@ -36,10 +36,10 @@ function App() {
 
   return (
     <div className="app">
-      <h1>Твой день в истории</h1>
+      <h1>Твій день в історії</h1>
       <form onSubmit={handleSubmit} className="form">
         <label>
-          Дата рождения:
+          Дата народження:
           <input
             type="date"
             value={date}
@@ -49,7 +49,7 @@ function App() {
         </label>
 
         <label>
-          Город:
+          Місто:
           <input
             type="text"
             value={city}
@@ -59,7 +59,7 @@ function App() {
         </label>
 
         <button type="submit" disabled={loading}>
-          {loading ? 'Загружаю...' : 'Показать магию'}
+          {loading ? 'Завантажую…' : 'Показати магію'}
         </button>
       </form>
 
@@ -68,17 +68,17 @@ function App() {
       {data && (
         <div className="cards">
           <section className="card">
-            <h2>Погода в этот день</h2>
+            <h2>Погода в цей день</h2>
             {data.weather ? (
               <>
                 <p>
-                  Максимум: {data.weather.t_max} °C, минимум:{' '}
+                  Максимум: {data.weather.t_max} °C, мінімум:{' '}
                   {data.weather.t_min} °C
                 </p>
                 <p>{data.weather.anomaly_comment}</p>
               </>
             ) : (
-              <p>Пока нет данных.</p>
+              <p>Поки що немає даних.</p>
             )}
           </section>
 
@@ -86,7 +86,7 @@ function App() {
             <h2>Небо</h2>
             {data.astro ? (
               <>
-                <p>Фаза Луны: {data.astro.moon_phase}</p>
+                <p>Фаза Місяця: {data.astro.moon_phase}</p>
                 {data.astro.events && data.astro.events.length > 0 && (
                   <ul>
                     {data.astro.events.map((ev, idx) => (
@@ -96,12 +96,12 @@ function App() {
                 )}
               </>
             ) : (
-              <p>Пока нет данных.</p>
+              <p>Поки що немає даних.</p>
             )}
           </section>
 
           <section className="card">
-            <h2>События в мире</h2>
+            <h2>Події у світі</h2>
             {data.world_events && data.world_events.length > 0 ? (
               <ul>
                 {data.world_events.map((ev, idx) => (
@@ -109,13 +109,13 @@ function App() {
                 ))}
               </ul>
             ) : (
-              <p>Пока пусто, но мы это заполним.</p>
+              <p>Поки порожньо, але ми це заповнимо.</p>
             )}
           </section>
 
           <section className="card">
-            <h2>Индекс необычности</h2>
-            <p>{data.fun_score ?? 'скоро появится'}</p>
+            <h2>Індекс незвичності</h2>
+            <p>{data.fun_score ?? 'скоро зʼявиться'}</p>
           </section>
         </div>
       )}
