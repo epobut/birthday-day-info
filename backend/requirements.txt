@@ -97,3 +97,6 @@ wcwidth==0.2.14
 webcolors==25.10.0
 webencodings==0.5.1
 websocket-client==1.9.0
+fastapi==0.115.0
+uvicorn[standard]==0.30.0
+httpx==0.27.2
