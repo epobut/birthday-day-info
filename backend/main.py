@@ -1,4 +1,5 @@
 import datetime as dt
+from typing import Tuple
 
 import httpx
 from fastapi import FastAPI, HTTPException, Query
@@ -16,31 +17,43 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Базовий набір міст (можемо розширити)
+CITY_COORDS = {
+    "Kyiv": (50.4501, 30.5234),
+    "Lviv": (49.8397, 24.0297),
+    "Kharkiv": (49.9935, 36.2304),
+    "Odesa": (46.4825, 30.7233),
+    "Dnipro": (48.4647, 35.0462),
+}
+DEFAULT_CITY = "Kyiv"
+
+
+def get_coords(city: str) -> Tuple[float, float]:
+    key = (city or "").strip()
+    if key in CITY_COORDS:
+        return CITY_COORDS[key]
+    return CITY_COORDS[DEFAULT_CITY]
+
 
 @app.get("/health")
 def health():
     return {"status": "ok"}
 
 
-KYIV_LAT = 50.4501
-KYIV_LON = 30.5234
-
-
 @app.get("/day-info")
 async def day_info(
     date: str = Query(..., description="YYYY-MM-DD"),
-    city: str = Query("Kyiv"),
+    city: str = Query(DEFAULT_CITY),
 ):
+    # Парсимо дату
     try:
         d = dt.date.fromisoformat(date)
     except ValueError:
         raise HTTPException(status_code=400, detail="Невірний формат дати, потрібен YYYY-MM-DD")
 
-    # Для MVP ігноруємо city і завжди беремо Київ
-    lat, lon = KYIV_LAT, KYIV_LON
+    lat, lon = get_coords(city)
 
     # --- Погода: Open-Meteo historical API ---
-    # https://open-meteo.com
     weather_url = (
         "https://archive-api.open-meteo.com/v1/archive"
         f"?latitude={lat}&longitude={lon}"
@@ -50,15 +63,10 @@ async def day_info(
     )
 
     # --- Восход/закат: SunriseSunset.io ---
-    # https://sunrisesunset.io/api/
-    sun_url = (
-        f"https://api.sunrisesunset.io/json?lat={lat}&lng={lon}&date={d.isoformat()}"
-    )
+    sun_url = f"https://api.sunrisesunset.io/json?lat={lat}&lng={lon}&date={d.isoformat()}"
 
-    # --- Исторические события: Wikimedia "On this day" ---
-    # https://api.wikimedia.org/wiki/API_reference/Feed/On_this_day
-    month = d.month
-    day = d.day
+    # --- Історичні події: Wikimedia "On this day" (англійською) ---
+    month, day = d.month, d.day
     wiki_url = (
         "https://api.wikimedia.org/feed/v1/wikipedia/en/onthisday/all"
         f"/{month:02d}/{day:02d}"
@@ -69,8 +77,13 @@ async def day_info(
             sun_url
         ), await client.get(wiki_url)
 
-    # Погода
-    weather = None
+    # --- Погода ---
+    weather = {
+        "t_min": None,
+        "t_max": None,
+        "precipitation": None,
+        "anomaly_comment": "Немає даних про погоду для цього дня.",
+    }
     if w_resp.status_code == 200:
         w = w_resp.json()
         daily = w.get("daily") or {}
@@ -78,44 +91,40 @@ async def day_info(
         tmin = (daily.get("temperature_2m_min") or [None])[0]
         precip = (daily.get("precipitation_sum") or [None])[0]
         if tmax is not None or tmin is not None:
-            anomaly_comment = "Поки без аномалій — просто історичні дані для цього дня."
-            weather = {
-                "t_min": tmin,
-                "t_max": tmax,
-                "precipitation": precip,
-                "anomaly_comment": anomaly_comment,
-            }
+            weather["t_min"] = tmin
+            weather["t_max"] = tmax
+            weather["precipitation"] = precip
+            weather["anomaly_comment"] = "Історичні дані погоди для цього дня завантажено."
 
-    # Солнце
-    astro = None
+    # --- Сонце / тривалість дня ---
+    astro = {
+        "sunrise": None,
+        "sunset": None,
+        "day_length": None,
+        "moon_phase": None,
+        "events": [],
+    }
     if sun_resp.status_code == 200:
         s = sun_resp.json().get("results") or {}
-        astro = {
-            "sunrise": s.get("sunrise"),
-            "sunset": s.get("sunset"),
-            "day_length": s.get("day_length"),
-            "moon_phase": s.get("moonrise") or "невідомо",
-            "events": [],
-        }
+        astro["sunrise"] = s.get("sunrise")
+        astro["sunset"] = s.get("sunset")
+        astro["day_length"] = s.get("day_length")
 
-    # Исторические события
+    # --- Події у світі ---
     world_events = []
     if wiki_resp.status_code == 200:
         body = wiki_resp.json()
-        # Берём немного событий, рождений и смертей
         for section_key in ("events", "births", "deaths"):
             for item in body.get(section_key, [])[:3]:
-                text = item.get("text") or item.get("pages", [{}])[0].get("normalizedtitle")
+                text = item.get("text") or (
+                    item.get("pages", [{}])[0].get("normalizedtitle")
+                )
                 year = item.get("year")
                 if text:
-                    if year:
-                        world_events.append(f"{year}: {text}")
-                    else:
-                        world_events.append(text)
+                    world_events.append(f"{year}: {text}" if year else text)
 
     fun_score = None
-    if weather or astro or world_events:
-        # простой «индекс незвичності» — чем больше данных, тем выше
+    if weather["t_max"] is not None or world_events:
         fun_score = min(10, 3 + len(world_events) // 2)
 
     return {
