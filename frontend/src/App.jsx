@@ -2,7 +2,9 @@ import { useState } from 'react';
 import './App.css';
 
 const API_BASE =
-  import.meta.env.VITE_API_BASE || 'https://birthday-day-info-1.onrender.com';
+  import.meta.env.VITE_API_BASE || 'https://birthday-day-info.onrender.com';
+
+const cities = ['Kyiv', 'Lviv', 'Kharkiv', 'Odesa', 'Dnipro'];
 
 function App() {
   const [date, setDate] = useState('');
@@ -22,16 +24,55 @@ function App() {
       const params = new URLSearchParams({ date, city });
       const res = await fetch(`${API_BASE}/day-info?${params.toString()}`);
       if (!res.ok) {
+        if (res.status === 400) {
+          throw new Error('Невірний формат дати.');
+        }
         throw new Error(`API error ${res.status}`);
       }
       const json = await res.json();
       setData(json);
     } catch (err) {
-      setError('Не вдалося завантажити дані, спробуй ще раз.');
       console.error(err);
+      setError('Не вдалося завантажити дані, спробуй ще раз трохи пізніше.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const renderWeather = () => {
+    if (!data?.weather) return <p>Поки що немає даних.</p>;
+    const { t_min, t_max, precipitation, anomaly_comment } = data.weather;
+    if (t_min == null && t_max == null) {
+      return <p>{anomaly_comment}</p>;
+    }
+    return (
+      <>
+        <p>
+          Максимум: {t_max != null ? `${t_max} °C` : '—'}, мінімум:{' '}
+          {t_min != null ? `${t_min} °C` : '—'}
+        </p>
+        <p>
+          Опади:{' '}
+          {precipitation != null ? `${precipitation} мм за добу` : 'дані відсутні'}
+        </p>
+        <p>{anomaly_comment}</p>
+      </>
+    );
+  };
+
+  const renderAstro = () => {
+    if (!data?.astro) return <p>Поки що немає даних.</p>;
+    const { sunrise, sunset, day_length } = data.astro;
+    if (!sunrise && !sunset && !day_length) {
+      return <p>Дані про Сонце поки що недоступні.</p>;
+    }
+    return (
+      <>
+        <p>Схід сонця: {sunrise || '—'}</p>
+        <p>Захід сонця: {sunset || '—'}</p>
+        <p>Тривалість дня: {day_length || '—'}</p>
+      </>
+    );
   };
 
   return (
@@ -50,12 +91,16 @@ function App() {
 
         <label>
           Місто:
-          <input
-            type="text"
+          <select
             value={city}
             onChange={(e) => setCity(e.target.value)}
-            placeholder="Kyiv"
-          />
+          >
+            {cities.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
         </label>
 
         <button type="submit" disabled={loading}>
@@ -69,35 +114,12 @@ function App() {
         <div className="cards">
           <section className="card">
             <h2>Погода в цей день</h2>
-            {data.weather ? (
-              <>
-                <p>
-                  Максимум: {data.weather.t_max} °C, мінімум:{' '}
-                  {data.weather.t_min} °C
-                </p>
-                <p>{data.weather.anomaly_comment}</p>
-              </>
-            ) : (
-              <p>Поки що немає даних.</p>
-            )}
+            {renderWeather()}
           </section>
 
           <section className="card">
             <h2>Небо</h2>
-            {data.astro ? (
-              <>
-                <p>Фаза Місяця: {data.astro.moon_phase}</p>
-                {data.astro.events && data.astro.events.length > 0 && (
-                  <ul>
-                    {data.astro.events.map((ev, idx) => (
-                      <li key={idx}>{ev}</li>
-                    ))}
-                  </ul>
-                )}
-              </>
-            ) : (
-              <p>Поки що немає даних.</p>
-            )}
+            {renderAstro()}
           </section>
 
           <section className="card">
